@@ -1,0 +1,23 @@
+name: Rakuten Check
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # 15分ごと
+  workflow_dispatch:  # 手動実行ボタンも表示
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run script
+        run: python rakuten_check.py
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
