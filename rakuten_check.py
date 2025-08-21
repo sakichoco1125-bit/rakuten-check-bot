@@ -23,4 +23,10 @@ def check_stock():
         )
 
 if __name__ == "__main__":
+    # 本番用
     check_stock()
+    # ↓テスト用（必ず通知が来る）
+    line_bot_api.push_message(
+        LINE_USER_ID,
+        TextSendMessage(text="テスト通知です！GitHub Actions OK 🎉")
+    )
