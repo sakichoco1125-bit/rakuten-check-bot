@@ -5,7 +5,8 @@ from time import sleep
 
 # v3 SDK
 from linebot.v3.messaging import MessagingApi
-from linebot.v3.messaging.models import TextMessage, TemplateMessage, ButtonsTemplate, UriAction
+from linebot.v3.messaging.models import TemplateMessage, ButtonsTemplate
+from linebot.v3.messaging.actions import UriAction
 
 # 環境変数から読み込み
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
