@@ -20,6 +20,8 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install selenium
+          pip install line-bot-sdk
 
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
@@ -27,9 +29,9 @@ jobs:
           chrome-version: latest
 
       - name: Setup ChromeDriver
-        uses: nanasess/setup-chromedriver@v1
+        uses: actions/setup-chromedriver@v1
         with:
-          chromedriver-version: latest
+          version: latest  # 最新安定版を自動取得
 
       - name: Run Rakuten Check
         env:
