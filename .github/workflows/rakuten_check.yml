@@ -3,7 +3,10 @@ name: Rakuten Check
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'
+    # 夜1時～朝6時は1時間ごと
+    - cron: '0 1-6 * * *'
+    # その他の時間は15分ごと
+    - cron: '*/15 0,7-23 * * *'
 
 jobs:
   run-script:
