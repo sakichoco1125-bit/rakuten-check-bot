@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
+import time
 
 # 環境変数から読み込み
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
@@ -10,38 +11,43 @@ LINE_USER_ID = os.getenv("LINE_USER_ID")
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
-# 🚩 テストモード（True にすると強制的に「在庫復活通知」を送る）
-# TEST_MODE = True
+# リトライ回数と待機秒数
+RETRY_COUNT = 3
+RETRY_WAIT = 5  # 秒
 
-def check_stock():
-    url = "https://books.rakuten.co.jp/rb/18210481/"  # Nintendo Switch 2 商品ページ
-
-    if TEST_MODE:
-        # テスト通知を送信
+def send_line(message_text):
+    try:
         line_bot_api.push_message(
             LINE_USER_ID,
-            TextSendMessage(text=f"[テスト通知] Nintendo Switch 2 在庫復活！ {url}")
+            TextSendMessage(text=message_text)
         )
-        print("[テスト通知] Nintendo Switch 2 在庫復活！ → 通知送信")
-        return
+        print(f"LINE通知送信: {message_text}")
+    except Exception as e:
+        print(f"LINE通知失敗: {e}")
 
-    # --- 通常の在庫チェック処理 ---
-    res = requests.get(url, timeout=10)
-    if res.status_code != 200:
-        print("ページ取得失敗 → 通知スキップ")
-        return
+def check_stock():
+    product_name = "Nintendo Switch 2"
+    url = "https://books.rakuten.co.jp/rb/18210481/"
+
+    for attempt in range(1, RETRY_COUNT + 1):
+        try:
+            res = requests.get(url, timeout=20)
+            res.raise_for_status()
+            break
+        except Exception as e:
+            print(f"Attempt {attempt} failed: {e}")
+            if attempt == RETRY_COUNT:
+                send_line(f"{product_name} の在庫情報取得失敗 → 通知スキップ ({e})")
+                return
+            time.sleep(RETRY_WAIT)
 
     soup = BeautifulSoup(res.text, "html.parser")
     status = soup.find("span", class_="salesStatus")
 
     if status and "ご注文できない商品" in status.text:
-        print("Nintendo Switch 2 在庫なし → 通知スキップ")
+        print(f"{product_name} 在庫なし → 通知スキップ")
     else:
-        line_bot_api.push_message(
-            LINE_USER_ID,
-            TextSendMessage(text=f"Nintendo Switch 2 在庫復活！ {url}")
-        )
-        print("Nintendo Switch 2 在庫復活！ → 通知送信")
+        send_line(f"{product_name} 在庫復活！ {url}")
 
 if __name__ == "__main__":
     check_stock()
