@@ -14,6 +14,10 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 RETRY_COUNT = 3
 RETRY_WAIT = 5  # 秒
 
+# --- テスト用フラグ ---
+# True にすると必ず在庫あり通知が届きます
+TEST_NOTIFY = False
+
 def send_line(message_text):
     try:
         line_bot_api.push_message(
@@ -27,6 +31,11 @@ def send_line(message_text):
 def check_stock():
     product_name = "Nintendo Switch 2"
     url = "https://books.rakuten.co.jp/rb/18210481/"
+
+    if TEST_NOTIFY:
+        send_line(f"{product_name} 在庫あり！（テスト通知） {url}")
+        print(f"{product_name} 在庫あり！（テスト通知） → LINE送信")
+        return  # 通常判定はスキップ
 
     for attempt in range(1, RETRY_COUNT + 1):
         try:
