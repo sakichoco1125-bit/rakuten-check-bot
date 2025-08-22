@@ -5,8 +5,8 @@ from linebot import LineBotApi
 from linebot.models import TemplateSendMessage, ButtonsTemplate, URIAction
 
 # LINE設定
-LINE_TOKEN = 'YOUR_CHANNEL_ACCESS_TOKEN'  # ここに自分のトークン
-USER_ID = 'YOUR_USER_ID'                   # ここに自分のLINEユーザーID
+LINE_TOKEN = 'YOUR_CHANNEL_ACCESS_TOKEN'
+USER_ID = 'YOUR_USER_ID'
 line_bot_api = LineBotApi(LINE_TOKEN)
 
 # チェックしたい楽天商品リスト
@@ -17,6 +17,11 @@ products = [
     }
 ]
 
+# ブラウザっぽくアクセスするためのヘッダー
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
+
 def check_stock(product_url, retries=3, delay=2):
     """
     楽天商品ページを確認して在庫ありならTrue
@@ -25,13 +30,14 @@ def check_stock(product_url, retries=3, delay=2):
     """
     for attempt in range(1, retries + 1):
         try:
-            response = requests.get(product_url, timeout=5)
+            # タイムアウトを15秒に延長、ヘッダー付き
+            response = requests.get(product_url, headers=HEADERS, timeout=15)
             if response.status_code != 200:
                 print(f"Error {response.status_code} fetching {product_url}")
                 raise Exception("Bad status code")
 
             soup = BeautifulSoup(response.text, 'html.parser')
-            # ページ内の「在庫あり」文字を検索（楽天ページによって調整必要）
+            # ページ内の「在庫あり」文字を検索（必要に応じて調整）
             if soup.find(text="在庫あり"):
                 return True
             else:
