@@ -1,82 +1,47 @@
 import os
-import time
-import json
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
+from bs4 import BeautifulSoup
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
 
-# ===== LINE設定 =====
+# 環境変数から読み込み
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_USER_ID = os.getenv("LINE_USER_ID")
+
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
-# ===== 監視する商品リスト =====
-products = [
-    {
-        "name": "Nintendo Switch 2",
-        "url": "https://books.rakuten.co.jp/rb/18210481/"
-    }
-]
+# 🚩 テストモード（True にすると強制的に「在庫復活通知」を送る）
+TEST_MODE = True
 
-# ===== 状態を保存するファイル =====
-STATE_FILE = "stock_state.json"
+def check_stock():
+    url = "https://books.rakuten.co.jp/rb/18210481/"  # Nintendo Switch 2 商品ページ
 
-def load_state():
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_state(state):
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f)
-
-def check_stock(product, prev_state):
-    options = Options()
-    options.add_argument("--headless=new")  # headless モード
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(options=options)
-
-    try:
-        driver.get(product["url"])
-
-        # ページ全体の読み込み完了を待機
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
+    if TEST_MODE:
+        # テスト通知を送信
+        line_bot_api.push_message(
+            LINE_USER_ID,
+            TextSendMessage(text=f"[テスト通知] Nintendo Switch 2 在庫復活！ {url}")
         )
+        print("[テスト通知] Nintendo Switch 2 在庫復活！ → 通知送信")
+        return
 
-        page_text = driver.page_source
-    except Exception as e:
-        print(f"{product['name']} の在庫情報取得失敗 ({e}) → 通知スキップ")
-        driver.quit()
-        prev_state[product["name"]] = True
-        return prev_state
+    # --- 通常の在庫チェック処理 ---
+    res = requests.get(url, timeout=10)
+    if res.status_code != 200:
+        print("ページ取得失敗 → 通知スキップ")
+        return
 
-    driver.quit()
+    soup = BeautifulSoup(res.text, "html.parser")
+    status = soup.find("span", class_="salesStatus")
 
-    # 「ご注文できない商品」がページにあるかどうか
-    is_out_of_stock = "ご注文できない商品" in page_text
-
-    # 前回は在庫なし、今回在庫あり → 通知
-    if prev_state.get(product["name"], True) and not is_out_of_stock:
-        message = f"{product['name']} 在庫復活！\n{product['url']}"
-        line_bot_api.push_message(LINE_USER_ID, TextSendMessage(text=message))
-        print(message)
-        prev_state[product["name"]] = False
+    if status and "ご注文できない商品" in status.text:
+        print("Nintendo Switch 2 在庫なし → 通知スキップ")
     else:
-        print(f"{product['name']} 在庫なし → 通知スキップ")
-        prev_state[product["name"]] = is_out_of_stock
-
-    return prev_state
+        line_bot_api.push_message(
+            LINE_USER_ID,
+            TextSendMessage(text=f"Nintendo Switch 2 在庫復活！ {url}")
+        )
+        print("Nintendo Switch 2 在庫復活！ → 通知送信")
 
 if __name__ == "__main__":
-    state = load_state()
-    for product in products:
-        state = check_stock(product, state)
-    save_state(state)
+    check_stock()
