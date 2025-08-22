@@ -52,12 +52,15 @@ def check_stock(product, prev_state):
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--lang=ja-JP")  # 言語設定でページ崩れを防止
+    chrome_options.add_argument("--remote-allow-origins=*")  # GitHub Actions用
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     driver.get(product["url"])
 
     try:
-        status_element = WebDriverWait(driver, 10).until(
+        # 最大15秒待機して salesStatus 要素が出るまで待つ
+        status_element = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CLASS_NAME, "salesStatus"))
         )
         status_text = status_element.text.strip()
