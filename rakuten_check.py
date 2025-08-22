@@ -5,6 +5,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from linebot import LineBotApi
 from linebot.models import TemplateSendMessage, ButtonsTemplate, URIAction
 
@@ -46,19 +48,23 @@ def check_stock(product, prev_state):
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+    chrome_options.add_argument("--window-size=1920,1080")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     driver.get(product["url"])
-    driver.implicitly_wait(3)
 
     try:
-        status_element = driver.find_element(By.CLASS_NAME, "salesStatus")
+        status_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "salesStatus"))
+        )
         status_text = status_element.text.strip()
     except:
         print(f"{product['name']} の在庫情報取得失敗 → 通知スキップ")
         driver.quit()
-        # 安全のため「在庫なし」として保存
-        prev_state[product["name"]] = True
+        prev_state[product["name"]] = True  # 安全のため「在庫なし」として保存
         return
 
     driver.quit()
