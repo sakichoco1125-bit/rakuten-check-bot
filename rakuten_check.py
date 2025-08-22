@@ -55,13 +55,18 @@ def check_stock(product, prev_state):
         status_element = driver.find_element(By.CLASS_NAME, "salesStatus")
         status_text = status_element.text.strip()
     except:
-        status_text = ""
+        print(f"{product['name']} の在庫情報取得失敗 → 通知スキップ")
+        driver.quit()
+        # 安全のため「在庫なし」として保存
+        prev_state[product["name"]] = True
+        return
 
     driver.quit()
 
     is_out_of_stock = "ご注文できない商品" in status_text
     prev_out_of_stock = prev_state.get(product["name"], True)
 
+    # 「在庫なし → 在庫あり」の場合のみ通知
     if prev_out_of_stock and not is_out_of_stock:
         send_line_notification(product["name"], product["url"])
         print(f"{product['name']} 在庫復活 → 通知送信")
