@@ -2,17 +2,15 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from time import sleep
-
-# v3 SDK
-from linebot.v3.messaging import MessagingApi
-from linebot.v3.messaging.models import TemplateMessage, ButtonsTemplate
-from linebot.v3.messaging.actions import UriAction
+from linebot import LineBotApi
+from linebot.models import TemplateSendMessage, ButtonsTemplate, URIAction
 
 # 環境変数から読み込み
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_USER_ID = os.getenv("LINE_USER_ID")
 
-messaging_api = MessagingApi(channel_access_token=LINE_CHANNEL_ACCESS_TOKEN)
+# v2 API のまま利用（非推奨警告は出ますが動作可能）
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
 # チェックしたい楽天商品
 PRODUCT = {
@@ -54,19 +52,19 @@ def check_stock(retries=3, delay=2):
                 return
 
 def send_line_notification(product_name, product_url):
-    """LINEにボタン付き通知を送信（v3対応）"""
+    """LINEにボタン付き通知を送信（v2 API対応）"""
     buttons_template = ButtonsTemplate(
         title=product_name,
         text='在庫があります！',
-        actions=[UriAction(label='購入する', uri=product_url)]
+        actions=[URIAction(label='購入する', uri=product_url)]
     )
 
-    template_message = TemplateMessage(
+    template_message = TemplateSendMessage(
         alt_text=f"{product_name} が在庫あり！",
         template=buttons_template
     )
 
-    messaging_api.push_message(LINE_USER_ID, template_message)
+    line_bot_api.push_message(LINE_USER_ID, template_message)
 
 if __name__ == "__main__":
     check_stock()
