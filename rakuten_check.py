@@ -6,11 +6,13 @@ import json
 from linebot import LineBotApi
 from linebot.models import TemplateSendMessage, ButtonsTemplate, URIAction
 
+# 環境変数
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_USER_ID = os.getenv("LINE_USER_ID")
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
+# 商品情報
 PRODUCT = {
     "name": "Nintendo Switch 2",
     "url": "https://books.rakuten.co.jp/rb/18210481/"
@@ -42,19 +44,22 @@ def check_stock(retries=3, delay=2):
 
             soup = BeautifulSoup(res.text, "html.parser")
             status = soup.find("span", class_="salesStatus")
-            is_out_of_stock = status and "ご注文できない商品" in status.text
+            status_text = status.text.strip() if status and status.text else ""
 
-            # 前回の状態
-            prev_out_of_stock = state.get(product_name, True)  # デフォルトは True（在庫なし）
+            # 「ご注文できない商品」があるかどうか判定
+            is_out_of_stock = "ご注文できない商品" in status_text
 
-            # 「ご注文できない商品」が消えたら通知
+            # 前回の状態（デフォルトは在庫なし）
+            prev_out_of_stock = state.get(product_name, True)
+
+            # 文言が消えた場合に通知
             if prev_out_of_stock and not is_out_of_stock:
                 send_line_notification(product_name, url)
                 print(f"{product_name} 在庫復活 → 通知送信")
             else:
                 print(f"{product_name} 状態変化なし")
 
-            # 状態を保存（在庫なしかどうか）
+            # 現在の状態を保存
             state[product_name] = is_out_of_stock
             save_state(state)
             return
