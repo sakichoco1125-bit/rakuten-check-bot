@@ -3,7 +3,7 @@ name: Rakuten Check
 on:
   workflow_dispatch:   # 手動実行用
   schedule:
-    - cron: '0 * * * *'   # 毎時0分に実行（UTCなので注意）
+    - cron: '*/15 * * * *'
 
 jobs:
   run-script:
