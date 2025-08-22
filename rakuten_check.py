@@ -15,18 +15,16 @@ def check_stock():
     res = requests.get(url)
     soup = BeautifulSoup(res.text, "html.parser")
     status = soup.find("span", class_="salesStatus")
+
     if status and "ご注文できない商品" not in status.text:
         # 在庫がある場合LINEに通知
         line_bot_api.push_message(
             LINE_USER_ID,
             TextSendMessage(text=f"在庫あり！ {url}")
         )
+        print("在庫あり → 通知送信")
+    else:
+        print("在庫なし → 通知しない")
 
 if __name__ == "__main__":
-    # 本番用
     check_stock()
-    # ↓テスト用（必ず通知が来る）
-    line_bot_api.push_message(
-        LINE_USER_ID,
-        TextSendMessage(text="テスト通知です！GitHub Actions OK 🎉")
-    )
