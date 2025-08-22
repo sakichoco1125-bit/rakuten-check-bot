@@ -57,14 +57,18 @@ def check_stock():
             time.sleep(RETRY_WAIT)
 
     soup = BeautifulSoup(res.text, "html.parser")
-    status = soup.find("span", class_="salesStatus")
+    status_tag = soup.find("span", class_="salesStatus")
 
-    # 在庫判定
-    current_stock_status = not (status and "ご注文できない商品" in status.text)
+    # 在庫判定（statusがNoneの場合も在庫なし扱い）
+    status_text = status_tag.text.strip() if status_tag else ""
+    if any(keyword in status_text for keyword in ["ご注文できません", "在庫なし"]):
+        current_stock_status = False
+    else:
+        current_stock_status = True
 
     last_stock_status = get_last_stock_status()
 
-    # 在庫復活時のみ通知
+    # 前回在庫なし → 今回在庫あり の場合のみ通知
     if not last_stock_status and current_stock_status:
         send_line(f"{product_name} 在庫復活！ {url}")
     else:
