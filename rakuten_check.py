@@ -16,7 +16,7 @@ RETRY_WAIT = 5  # 秒
 
 # --- テスト用フラグ ---
 # True にすると必ず在庫あり通知が届きます
-TEST_NOTIFY = False
+TEST_NOTIFY = True
 
 def send_line(message_text):
     try:
