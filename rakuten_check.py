@@ -1,74 +1,53 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 from time import sleep
 from linebot import LineBotApi
-from linebot.models import TemplateSendMessage, ButtonsTemplate, URIAction
+from linebot.models import TextSendMessage
 
-# LINE設定
-LINE_TOKEN = 'YOUR_CHANNEL_ACCESS_TOKEN'
-USER_ID = 'YOUR_USER_ID'
-line_bot_api = LineBotApi(LINE_TOKEN)
+# 環境変数から読み込み
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_USER_ID = os.getenv("LINE_USER_ID")
 
-# チェックしたい楽天商品リスト
-products = [
-    {
-        "name": "Nintendo Switch 2",
-        "url": "https://books.rakuten.co.jp/rb/18210481/"
-    }
-]
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
 # ブラウザっぽくアクセスするためのヘッダー
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
-def check_stock(product_url, retries=3, delay=2):
-    """
-    楽天商品ページを確認して在庫ありならTrue
-    - retries: エラー時の再試行回数
-    - delay: 再試行時の待機秒数
-    """
+def check_stock(retries=3, delay=2):
+    url = "https://books.rakuten.co.jp/rb/1234567890/"  # ★商品ページURLに差し替え
+
     for attempt in range(1, retries + 1):
         try:
-            # タイムアウトを15秒に延長、ヘッダー付き
-            response = requests.get(product_url, headers=HEADERS, timeout=15)
-            if response.status_code != 200:
-                print(f"Error {response.status_code} fetching {product_url}")
+            res = requests.get(url, headers=HEADERS, timeout=15)
+            if res.status_code != 200:
+                print(f"Error {res.status_code} fetching {url}")
                 raise Exception("Bad status code")
 
-            soup = BeautifulSoup(response.text, 'html.parser')
-            # ページ内の「在庫あり」文字を検索（必要に応じて調整）
-            if soup.find(text="在庫あり"):
-                return True
+            soup = BeautifulSoup(res.text, "html.parser")
+            # 在庫判定（警告が出ないように string を使用）
+            status = soup.find("span", class_="salesStatus")
+            if status and "ご注文できない商品" not in status.string:
+                # 在庫がある場合LINEに通知
+                line_bot_api.push_message(
+                    LINE_USER_ID,
+                    TextSendMessage(text=f"在庫あり！ {url}")
+                )
+                print("在庫あり → 通知送信")
+                return  # 通知したら終了
             else:
-                return False
+                print("在庫なし → 通知しない")
+                return
 
         except Exception as e:
             print(f"Attempt {attempt} failed: {e}")
             if attempt < retries:
                 sleep(delay)
             else:
-                return False
+                print("取得失敗 → 通知なし")
+                return
 
-def send_line_notification(product_name, product_url):
-    """LINEにボタン付き通知を送信"""
-    buttons_template = ButtonsTemplate(
-        title=product_name,
-        text='在庫があります！',
-        actions=[URIAction(label='購入する', uri=product_url)]
-    )
-
-    template_message = TemplateSendMessage(
-        alt_text=f"{product_name} が在庫あり！",
-        template=buttons_template
-    )
-
-    line_bot_api.push_message(USER_ID, template_message)
-
-# メイン処理
-for product in products:
-    if check_stock(product['url']):
-        send_line_notification(product['name'], product['url'])
-        print(f"{product['name']} は在庫あり！通知送信完了。")
-    else:
-        print(f"{product['name']} は在庫なし、または取得失敗。")
+if __name__ == "__main__":
+    check_stock()
