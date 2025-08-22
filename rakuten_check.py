@@ -10,38 +10,33 @@ LINE_USER_ID = os.getenv("LINE_USER_ID")
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 
-# 🚩 テストモード（True にすると強制的に「在庫復活通知」を送る）
-TEST_MODE = True
-
 def check_stock():
-    url = "https://books.rakuten.co.jp/rb/18210481/"  # Nintendo Switch 2 商品ページ
+    product_name = "Nintendo Switch 2"
+    url = "https://books.rakuten.co.jp/rb/18210481/"
 
-    if TEST_MODE:
-        # テスト通知を送信
-        line_bot_api.push_message(
-            LINE_USER_ID,
-            TextSendMessage(text=f"[テスト通知] Nintendo Switch 2 在庫復活！ {url}")
-        )
-        print("[テスト通知] Nintendo Switch 2 在庫復活！ → 通知送信")
-        return
-
-    # --- 通常の在庫チェック処理 ---
-    res = requests.get(url, timeout=10)
-    if res.status_code != 200:
-        print("ページ取得失敗 → 通知スキップ")
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+    except Exception as e:
+        print(f"{product_name} の在庫情報取得失敗 → 通知スキップ ({e})")
         return
 
     soup = BeautifulSoup(res.text, "html.parser")
     status = soup.find("span", class_="salesStatus")
 
+    # 在庫チェック条件
     if status and "ご注文できない商品" in status.text:
-        print("Nintendo Switch 2 在庫なし → 通知スキップ")
+        print(f"{product_name} 在庫なし → 通知スキップ")
     else:
-        line_bot_api.push_message(
-            LINE_USER_ID,
-            TextSendMessage(text=f"Nintendo Switch 2 在庫復活！ {url}")
+        # 在庫が復活した場合に通知
+        message = TextSendMessage(
+            text=f"{product_name} 在庫復活！\n{url}"
         )
-        print("Nintendo Switch 2 在庫復活！ → 通知送信")
+        try:
+            line_bot_api.push_message(LINE_USER_ID, message)
+            print(f"{product_name} 在庫復活 → 通知送信")
+        except Exception as e:
+            print(f"LINE通知失敗: {e}")
 
 if __name__ == "__main__":
     check_stock()
